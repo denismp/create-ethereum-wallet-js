@@ -8,14 +8,15 @@ const util = require('util')
 
 //TODO: require ethers.js
 const ethers = require('ethers')
+
 //TODO: set provider to be ropsten
 const provider = ethers.getDefaultProvider('ropsten')
 
 //TODO: set wallets directory
-const walletDirectory = "wallets"
+const walletDirectory = "wallets/"
 
-if (!fs.existsSync(walletDirectory)){
-     fs.mkdirSync(walletDirectory)
+if (!fs.existsSync(walletDirectory)) {
+    fs.mkdirSync(walletDirectory)
 }
 
 app.use(bodyParser.urlencoded({ extended: false }))
@@ -40,18 +41,43 @@ app.get('/create', (req, res) => {
 // Create endpoint
 app.post('/create', (req, res) => {
     // TODO: fetch user input fields (password and confirmPassword)
+    let password = req.body.password;
+    let confirmPassword = req.body.confirmPassword;
 
     //TODO: make simple validation
+    if (password !== confirmPassword) return true;
 
     //TODO: Generate wallet from mnemonic
+    let randomEntrypyBytes = ethers.utils.randomBytes(16);
+    let mnemonic = ethers.utils.HDNode.entropyToMnemonic(randomEntrypyBytes);
+    let wallet = ethers.Wallet.fromMnemonic(mnemonic);
 
     //TODO: Encrypt and save as json file
     wallet.encrypt(password).then((jsonWallet) => {
-        let filename  = "UTC_JSON_WALLET_" + Math.round(+ new Date() / 1000)
-                                           + "_" + Math.random(10000, 10000)
-                                           + ".json"
+        let filename = "UTC_JSON_WALLET_" + Math.round(+ new Date() / 1000)
+            + "_" + Math.random(10000, 10000)
+            + ".json"
 
         //TODO: Make a file with the wallet data
+        fs.writeFile(walletDirectory + filename, jsonWallet, 'utf-8', err => {
+            if (err) {
+                res.render(__dirname + '/views/create.html', {
+                    mnemonic: mnemonic,
+                    jsonWallet: jsonWallet,
+                    filename: filename,
+                    error: "Problem with writing"
+                });
+
+                return
+            }
+
+            drawView(res, "create", {
+                mnemonic: mnemonic,
+                jsonWallet: jsonWallet,
+                filename: filename,
+                error: undefined
+            });
+        });
     })
 })
 
@@ -63,18 +89,18 @@ app.post('/send', (req, res) => {
     //TODO: fetch user data (recipient,private key and amaunt)
 
     // Simple validation
-    if(recipient === "" || recipient === undefined &&
+    if (recipient === "" || recipient === undefined &&
         privateKey === "" || privateKey === undefined &&
-        amount === "" || amount === undefined || amount <= 0){ return }
-    
+        amount === "" || amount === undefined || amount <= 0) { return }
+
     let wallet;
 
-    try{
+    try {
         //TODO: make instance of the wallet
-    } catch(e) {
-        drawView(res, "send", { 
-            transactionHash : undefined, 
-            error : e.reason
+    } catch (e) {
+        drawView(res, "send", {
+            transactionHash: undefined,
+            error: e.reason
         })
         return
     }
@@ -86,24 +112,24 @@ app.post('/send', (req, res) => {
 })
 
 app.get('/balance', (req, res) => {
-	res.render(__dirname + '/views/balance.html');
+    res.render(__dirname + '/views/balance.html');
 })
 
 app.post('/balance', (req, res) => {
     //TODO: fetch user data (filename and password)
-    
+
     //read the file
     fs.readFile(walletDirectory + filename, 'utf8', async (err, jsonWallet) => {
-        if(err) {
-            drawView(res, "balance", { wallets : undefined, error : 'Error with file writing' })
+        if (err) {
+            drawView(res, "balance", { wallets: undefined, error: 'Error with file writing' })
         }
-    
+
         ethers.Wallet.fromEncryptedJson(jsonWallet, password).then(async (wallet) => {
             //TODO: generate 5 wallets from your master key
 
-            drawView(res, "balance", { wallets : wallets, error : undefined })
-        }).catch( (err) => {
-            drawView(res, "balance", { wallets : undefined, error : 'The password is wrong' })
+            drawView(res, "balance", { wallets: wallets, error: undefined })
+        }).catch((err) => {
+            drawView(res, "balance", { wallets: undefined, error: 'The password is wrong' })
         })
     })
 })
@@ -118,7 +144,7 @@ app.post('/recover', (req, res) => {
     //TODO: fetch user data (mnemonic and password)
 
     //TODO: make wallet instance of this mnemonic
-    
+
     // TODO: encrypt and save the wallet
 })
 
@@ -130,23 +156,23 @@ app.get('/load', (req, res) => {
 app.post('/load', (req, res) => {
     //TODO: fetch user data (filename and password)
 
-    fs.readFile(walletDirectory + filename, 'utf8', (err,jsonWallet) => {
+    fs.readFile(walletDirectory + filename, 'utf8', (err, jsonWallet) => {
         //error handling
-        if (err) { 
+        if (err) {
             res.render(__dirname + "/views/load.html", {
-                address : undefined,
-                privateKey : undefined,
-                mnemonic : undefined,
-                error : 'The file doesn\'t exist'
-            }) 
+                address: undefined,
+                privateKey: undefined,
+                mnemonic: undefined,
+                error: 'The file doesn\'t exist'
+            })
         }
 
         //TODO: decrypt the wallet
     })
 })
 
-function drawView(res, view, data){
-    res.render(__dirname + "/views/" +  view + ".html", data)
+function drawView(res, view, data) {
+    res.render(__dirname + "/views/" + view + ".html", data)
 }
 
 app.listen(3000)
