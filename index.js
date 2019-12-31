@@ -142,10 +142,40 @@ app.get('/recover', (req, res) => {
 //recover wallet
 app.post('/recover', (req, res) => {
     //TODO: fetch user data (mnemonic and password)
+    let mnemonic = req.body.mnemonic;
+    let password = req.body.password;
 
     //TODO: make wallet instance of this mnemonic
+    const wallet = ethers.Wallet.fromMnemonic(mnemonic);
 
     // TODO: encrypt and save the wallet
+    wallet.encrypt(password).then((jsonWallet) => {
+        let filename = "UTC_JSON_WALLET_" + Math.round(new Date() / 1000)
+            + "_" + Math.random(10000, 10000)
+            + ".json";
+        console.log('jsonWallet=' + jsonWallet);
+        console.log('filename=' + filename);
+        console.log('pathname=' + walletDirectory + filename);
+        fs.writeFile(walletDirectory + filename, jsonWallet, 'utf-8', err => {
+            if (err) {
+                drawView(res, "recover", {
+                    message: undefined,
+                    filename: undefined,
+                    mnemonic: undefined,
+                    error: "There is a problem with file writing"
+                })
+
+                return
+            }
+
+            drawView(res, "recover", {
+                message: 'The wallet is recovered',
+                filename: filename,
+                mnemonic: mnemonic,
+                error: undefined
+            });
+        });
+    })
 })
 
 //load your wallet
@@ -155,6 +185,8 @@ app.get('/load', (req, res) => {
 
 app.post('/load', (req, res) => {
     //TODO: fetch user data (filename and password)
+    let filename = req.body.filename;
+    let password = req.body.password;
 
     fs.readFile(walletDirectory + filename, 'utf8', (err, jsonWallet) => {
         //error handling
@@ -168,6 +200,21 @@ app.post('/load', (req, res) => {
         }
 
         //TODO: decrypt the wallet
+        ethers.Wallet.fromEncryptedJson(jsonWallet, password).then((wallet) => {
+            drawView(res, "load", {
+                address: wallet.address,
+                privateKey: wallet.privateKey,
+                mnemonic: wallet.privateKey,
+                error: undefined
+            });
+        }).catch((err) => {
+            drawView(res, "load", {
+                address: undefined,
+                privateKey: undefined,
+                mnemonic: undefined,
+                error: "the password is wrong"
+            });
+        });
     })
 })
 
