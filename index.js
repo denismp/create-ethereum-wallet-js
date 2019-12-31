@@ -117,6 +117,8 @@ app.get('/balance', (req, res) => {
 
 app.post('/balance', (req, res) => {
     //TODO: fetch user data (filename and password)
+    let filename = req.body.filename;
+    let password = req.body.password;
 
     //read the file
     fs.readFile(walletDirectory + filename, 'utf8', async (err, jsonWallet) => {
@@ -126,6 +128,19 @@ app.post('/balance', (req, res) => {
 
         ethers.Wallet.fromEncryptedJson(jsonWallet, password).then(async (wallet) => {
             //TODO: generate 5 wallets from your master key
+            let derivationPath = "m/44'/60'/0'/0"
+            let wallets = [];
+            for (i = 0; i <= 5; i++) {
+                let hdNode = ethers.utils.HDNode
+                    .fromMnemonic(wallet.mnemonic)
+                    .derivePath(derivationPath + i)
+                let walletInstance = new ethers.Wallet(hdNode.privateKey, provider);
+                let balance = await walletInstance.getBalance();
+                wallets.push({
+                    keypair: walletInstance,
+                    balance: ethers.utils.formatEther(balance)
+                })
+            }
 
             drawView(res, "balance", { wallets: wallets, error: undefined })
         }).catch((err) => {
