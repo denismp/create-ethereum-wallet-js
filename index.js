@@ -87,6 +87,9 @@ app.get('/send', (req, res) => {
 
 app.post('/send', (req, res) => {
     //TODO: fetch user data (recipient,private key and amaunt)
+    let recipient = req.body.recipient;
+    let privateKey = req.body.privateKey;
+    let amount = req.body.amount;
 
     // Simple validation
     if (recipient === "" || recipient === undefined &&
@@ -97,6 +100,7 @@ app.post('/send', (req, res) => {
 
     try {
         //TODO: make instance of the wallet
+        wallet = new ethers.Wallet(privateKey, provider)
     } catch (e) {
         drawView(res, "send", {
             transactionHash: undefined,
@@ -109,6 +113,29 @@ app.post('/send', (req, res) => {
     let gas = 21000
 
     // TODO: send the transaction to the network
+    // console.log('transactionHash='+transactionHash)
+    console.log('privateKey='+privateKey)
+    console.log('recipient='+recipient)
+    console.log('value='+ethers.utils.parseEther(amount))
+    console.log('gasLimit='+gas*gasPrice)
+
+    wallet.sendTransaction({
+        to: recipient,
+        value: ethers.utils.parseEther(amount),
+        gasLimit: gas*gasPrice
+    }).then((transaction) => {
+        console.log('transaction='+transaction)
+        drawView(res, "send", {
+            transactionHash: transaction.hash,
+            error: undefined
+        })
+    }).catch((e) => {
+        console.log('e='+e)
+        drawView(res, "send", {
+            transactionHash: undefined,
+            error: JSON.parse(e.responseText).error.message
+        })
+    })
 })
 
 app.get('/balance', (req, res) => {
